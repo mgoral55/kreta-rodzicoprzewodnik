@@ -147,9 +147,10 @@ html_template = f"""<!DOCTYPE html>
             background: #663223; color: white; border-color: #663223;
         }}
 
+        /* WSPÓLNY KONTENER O JEDNOLITEJ SZEROKOŚCI DLA DOKU */
         .bottom-left-dock {{
             position: absolute; bottom: 20px; left: 10px; z-index: 1500;
-            display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+            display: flex; flex-direction: column; gap: 6px; width: 140px;
             transition: opacity 0.2s ease-in-out;
         }}
         .bottom-left-dock.hidden {{
@@ -158,18 +159,30 @@ html_template = f"""<!DOCTYPE html>
 
         .panel-toggle-btn {{
             background: #663223; color: white; border: none; border-radius: 8px;
-            padding: 8px 12px; font-size: 11px; font-weight: 900; text-transform: uppercase;
+            padding: 8px 10px; font-size: 11px; font-weight: 900; text-transform: uppercase;
             cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.3); display: flex;
-            align-items: center; gap: 6px; pointer-events: auto;
+            align-items: center; justify-content: center; gap: 6px; width: 100%; pointer-events: auto;
         }}
         .panel-toggle-btn:active {{ background: #4a2419; transform: scale(0.96); }}
+
+        .quick-nav-row {{
+            display: flex; gap: 6px; width: 100%; pointer-events: auto;
+        }}
+        .quick-nav-btn {{
+            background: #e6ded1; color: #1a110b; border: 1px solid #b89b82; border-radius: 8px;
+            padding: 6px 0; font-size: 14px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;
+            flex: 1;
+        }}
+        .quick-nav-btn:active {{ background: #d5cbc0; transform: scale(0.96); }}
 
         .map-legend {{
             background: white; padding: 8px 10px; border-radius: 8px;
             font-size: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); pointer-events: none;
+            width: 100%;
         }}
         .legend-row {{ display: flex; align-items: center; margin-bottom: 3px; }}
-        .legend-dot {{ width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; border: 1px solid #aaa; }}
+        .legend-dot {{ width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border: 1px solid #aaa; flex-shrink: 0; }}
 
         #side-panel {{
             position: fixed; top: 0; left: -100%; width: 85%; max-width: 340px; height: 100%;
@@ -332,8 +345,13 @@ html_template = f"""<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- DOCK: WYRÓWNANY DO JEDNOLITEJ SZEROKOŚCI -->
     <div class="bottom-left-dock" id="bottom-dock">
-        <button class="panel-toggle-btn" onclick="toggleSidePanel()">➡ Lista miejsc</button>
+        <button class="panel-toggle-btn" onclick="toggleSidePanel()">➡ Lista</button>
+        <div class="quick-nav-row">
+            <button class="quick-nav-btn" onclick="navigateHome()" title="Nawiguj do domu">🏠</button>
+            <button class="quick-nav-btn" onclick="navigateShop()" title="Nawiguj do sklepu">🛒</button>
+        </div>
         <div class="map-legend">
             <b>Typy miejsc:</b>
             <div class="legend-row" style="margin-top:4px;"><div class="legend-dot" style="background:#E83E8C;"></div>Must have</div>
@@ -491,6 +509,16 @@ html_template = f"""<!DOCTYPE html>
 
         const homeLat = 35.591389;
         const homeLon = 24.091750;
+        const shopLat = 35.5862494;
+        const shopLon = 24.0918753;
+
+        function navigateHome() {{
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${{homeLat}},${{homeLon}}`, '_blank');
+        }}
+
+        function navigateShop() {{
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${{shopLat}},${{shopLon}}`, '_blank');
+        }}
 
         let homeHtml = `<div style="background-color:#1a110b;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.5);">🏠</div>`;
         let homeIcon = L.divIcon({{ html: homeHtml, className: '', iconSize: [30,30], iconAnchor: [15,15] }});
@@ -498,8 +526,7 @@ html_template = f"""<!DOCTYPE html>
         
         homeMarker.on('click', function(e) {{
             L.DomEvent.stopPropagation(e);
-            let googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${{homeLat}},${{homeLon}}`;
-            window.open(googleMapsUrl, '_blank');
+            navigateHome();
         }});
 
         map.on('click', function() {{
@@ -741,4 +768,4 @@ html_template = f"""<!DOCTYPE html>
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html_template)
 
-print("Gotowe! Wygenerowano plik 'index.html'.")
+print("Gotowe! Wygenerowano plik 'index.html' ze zbalansowanym, równym dokiem.")
