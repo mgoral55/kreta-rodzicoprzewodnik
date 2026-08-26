@@ -1,0 +1,1 @@
+planujemy wycieczkę dla rodziny z dziećmi w wieku 5 i 7 lat, nasza baza wypadowa to Stravros, dane miejsc do odwiedzenia masz w csv miejsca - zaprojekuj mi wycieczkę do miejsca nr 7 i chcę zobaczyć jeszcze jakąś winiarnię - stwórz plik csv z danymi wycieczki jak plik karta_wycieczki.csv (koniecznie musi mieć idenyczne kolumny)
