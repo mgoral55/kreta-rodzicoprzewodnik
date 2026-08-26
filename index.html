@@ -35,7 +35,6 @@
             background: #663223; color: white; border-color: #663223;
         }
 
-        /* WSPÓLNY KONTENER O JEDNOLITEJ SZEROKOŚCI DLA DOKU */
         .bottom-left-dock {
             position: absolute; bottom: 20px; left: 10px; z-index: 1500;
             display: flex; flex-direction: column; gap: 6px; width: 140px;
@@ -167,7 +166,7 @@
             background-color: #663223; color: white; padding: 6px 14px; border-radius: 20px;
             text-decoration: none; font-size: 9pt; font-weight: bold; text-transform: uppercase;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        }
+        }}
         .gps-nav-btn:active { transform: scale(0.95); }
 
         .logistics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background-color: #d5cbc0; }
@@ -233,7 +232,6 @@
         </div>
     </div>
 
-    <!-- DOCK: WYRÓWNANY DO JEDNOLITEJ SZEROKOŚCI -->
     <div class="bottom-left-dock" id="bottom-dock">
         <button class="panel-toggle-btn" onclick="toggleSidePanel()">➡ Lista</button>
         <div class="quick-nav-row">
@@ -401,14 +399,14 @@
         const shopLon = 24.0918753;
 
         function navigateHome() {
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${homeLat},${homeLon}`, '_blank');
+            window.open('https://www.google.com/maps/dir/?api=1&destination=' + homeLat + ',' + homeLon, '_blank');
         }
 
         function navigateShop() {
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${shopLat},${shopLon}`, '_blank');
+            window.open('https://www.google.com/maps/dir/?api=1&destination=' + shopLat + ',' + shopLon, '_blank');
         }
 
-        let homeHtml = `<div style="background-color:#1a110b;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.5);">🏠</div>`;
+        let homeHtml = '<div style="background-color:#1a110b;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.5);">🏠</div>';
         let homeIcon = L.divIcon({ html: homeHtml, className: '', iconSize: [30,30], iconAnchor: [15,15] });
         let homeMarker = L.marker([homeLat, homeLon], { icon: homeIcon }).addTo(map);
         
