@@ -123,14 +123,15 @@ for idx, row in df_places.iterrows():
         "zadania": format_tasks(clean_text(row.get('Zadania dla dzieci', '')))
     })
 
-# --- 2. GENEROWANIE INDEX.HTML ---
+# --- 2. GENEROWANIE INDEX.HTML Z MANIFESTEM ---
 index_html = """<!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Kreta - Przewodnik Rodzinny</title>
+    <title>OdysseyMili - Kreta Przewodnik Rodzinny</title>
     
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -385,7 +386,7 @@ index_html = """<!DOCTYPE html>
         </div>
     </div>
 
-    <a href="wycieczka.html" class="trip-btn">🚗 Trip</a>
+    <a href="wycieczka.html" class="trip-btn">🚗 OdysseyMili</a>
 
     <div id="side-panel">
         <div class="panel-header">
@@ -822,8 +823,8 @@ print("-> Zapisano index.html")
 
 
 # --- 3. GENEROWANIE PODSTRONY WYCIECZKA.HTML ---
-pobudka_val = "10:00"
-wyjazd_val = "10:30"
+pobudka_val = "05:00"
+wyjazd_val = "05:30"
 powrot_val = "17:00"
 calkowity_czas_val = ""
 opis_wycieczki_val = ""
@@ -851,7 +852,6 @@ if os.path.exists(trip_csv_name):
 
     if not df_trip.empty:
         first_row = df_trip.iloc[0]
-        # Bezpośrednie odczytanie kolumny pobudki z 1. wiersza
         if 'godzina_pobudki' in df_trip.columns:
             val_pob = clean_text(first_row['godzina_pobudki'])
             if val_pob and val_pob != '-':
@@ -1614,3 +1614,5 @@ wycieczka_html = f"""<!DOCTYPE html>
 with open("wycieczka.html", "w", encoding="utf-8") as f:
     f.write(wycieczka_html)
 print(f"-> Zapisano wycieczka.html z pobudką równą {pobudka_val}")
+
+print("Gotowe! Manifest został dodany do index.html.")
