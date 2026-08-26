@@ -393,6 +393,7 @@
         let selectedLoc = null;
         let historyStack = [];
         let markersList = [];
+        let fromTrip = false;
         
         let activeFilters = {
             meltdown: 'all',
@@ -478,6 +479,7 @@
             if (newLoc) {
                 document.getElementById('side-panel').classList.remove('active');
                 historyStack = []; 
+                fromTrip = false;
                 selectedLoc = newLoc;
                 showDetails(newLoc);
                 
@@ -517,6 +519,7 @@
         function openSelectedDetails() {
             if(selectedLoc) {
                 historyStack = []; 
+                fromTrip = false;
                 showDetails(selectedLoc);
                 document.getElementById('mini-popup').classList.remove('active');
                 document.getElementById('bottom-dock').classList.remove('hidden');
@@ -541,6 +544,8 @@
                 const prevLoc = historyStack.pop();
                 selectedLoc = prevLoc;
                 showDetails(prevLoc);
+            } else if (fromTrip) {
+                window.location.href = 'wycieczka.html';
             } else {
                 document.getElementById('details-overlay').classList.remove('active');
                 if(selectedLoc) {
@@ -558,6 +563,8 @@
                 let prevLoc = historyStack[historyStack.length - 1];
                 let shortName = prevLoc.name.length > 15 ? prevLoc.name.substring(0, 15) + "..." : prevLoc.name;
                 backBtn.innerText = "⬅ Wróć do: " + shortName;
+            } else if (fromTrip) {
+                backBtn.innerText = "⬅ Wróć do wycieczki";
             } else {
                 backBtn.innerText = "⬅ Wróć do mapy";
             }
@@ -658,6 +665,24 @@
             overlay.classList.add('active');
             overlay.scrollTop = 0;
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const placeId = urlParams.get('place');
+            if (urlParams.get('from') === 'wycieczka' || urlParams.get('from') === 'trip') {
+                fromTrip = true;
+            }
+            if (placeId) {
+                const targetLoc = locations.find(l => l.id == placeId);
+                if (targetLoc) {
+                    selectedLoc = targetLoc;
+                    showDetails(targetLoc);
+                    if(targetLoc.lat && targetLoc.lon) {
+                        map.setView([targetLoc.lat, targetLoc.lon], 12);
+                    }
+                }
+            }
+        });
 
     </script>
 </body>

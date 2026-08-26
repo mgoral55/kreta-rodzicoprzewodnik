@@ -519,6 +519,7 @@ index_html = """<!DOCTYPE html>
         let selectedLoc = null;
         let historyStack = [];
         let markersList = [];
+        let fromTrip = false;
         
         let activeFilters = {
             meltdown: 'all',
@@ -604,6 +605,7 @@ index_html = """<!DOCTYPE html>
             if (newLoc) {
                 document.getElementById('side-panel').classList.remove('active');
                 historyStack = []; 
+                fromTrip = false;
                 selectedLoc = newLoc;
                 showDetails(newLoc);
                 
@@ -643,6 +645,7 @@ index_html = """<!DOCTYPE html>
         function openSelectedDetails() {
             if(selectedLoc) {
                 historyStack = []; 
+                fromTrip = false;
                 showDetails(selectedLoc);
                 document.getElementById('mini-popup').classList.remove('active');
                 document.getElementById('bottom-dock').classList.remove('hidden');
@@ -667,6 +670,8 @@ index_html = """<!DOCTYPE html>
                 const prevLoc = historyStack.pop();
                 selectedLoc = prevLoc;
                 showDetails(prevLoc);
+            } else if (fromTrip) {
+                window.location.href = 'wycieczka.html';
             } else {
                 document.getElementById('details-overlay').classList.remove('active');
                 if(selectedLoc) {
@@ -684,6 +689,8 @@ index_html = """<!DOCTYPE html>
                 let prevLoc = historyStack[historyStack.length - 1];
                 let shortName = prevLoc.name.length > 15 ? prevLoc.name.substring(0, 15) + "..." : prevLoc.name;
                 backBtn.innerText = "⬅ Wróć do: " + shortName;
+            } else if (fromTrip) {
+                backBtn.innerText = "⬅ Wróć do wycieczki";
             } else {
                 backBtn.innerText = "⬅ Wróć do mapy";
             }
@@ -785,6 +792,24 @@ index_html = """<!DOCTYPE html>
             overlay.scrollTop = 0;
         }
 
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const placeId = urlParams.get('place');
+            if (urlParams.get('from') === 'wycieczka' || urlParams.get('from') === 'trip') {
+                fromTrip = true;
+            }
+            if (placeId) {
+                const targetLoc = locations.find(l => l.id == placeId);
+                if (targetLoc) {
+                    selectedLoc = targetLoc;
+                    showDetails(targetLoc);
+                    if(targetLoc.lat && targetLoc.lon) {
+                        map.setView([targetLoc.lat, targetLoc.lon], 12);
+                    }
+                }
+            }
+        });
+
     </script>
 </body>
 </html>"""
@@ -797,8 +822,8 @@ print("-> Zapisano index.html")
 
 
 # --- 3. GENEROWANIE PODSTRONY WYCIECZKA.HTML ---
-pobudka_val = "05:00"
-wyjazd_val = "05:30"
+pobudka_val = "10:00"
+wyjazd_val = "10:30"
 powrot_val = "17:00"
 calkowity_czas_val = ""
 opis_wycieczki_val = ""
@@ -814,7 +839,7 @@ trip_map_points = []
 home_lat, home_lon = 35.591389, 24.091750
 trip_map_points.append({"lat": home_lat, "lon": home_lon, "name": "Baza domowa (Stavros)", "is_home": True, "id": "0"})
 
-trip_csv_name = "karta_wycieczki_4.csv" if os.path.exists("karta_wycieczki_4.csv") else ("karta_wycieczki_3.csv" if os.path.exists("karta_wycieczki_3.csv") else ("karta_wycieczki_2.csv" if os.path.exists("karta_wycieczki_2.csv") else "karta_wycieczki.csv"))
+trip_csv_name = "karta_wycieczki.csv"
 
 if os.path.exists(trip_csv_name):
     try:
@@ -826,6 +851,12 @@ if os.path.exists(trip_csv_name):
 
     if not df_trip.empty:
         first_row = df_trip.iloc[0]
+        # Bezpośrednie odczytanie kolumny pobudki z 1. wiersza
+        if 'godzina_pobudki' in df_trip.columns:
+            val_pob = clean_text(first_row['godzina_pobudki'])
+            if val_pob and val_pob != '-':
+                pobudka_val = val_pob
+
         for col in df_trip.columns:
             c_clean = col.lower().replace(" ", "").replace("_", "")
             if 'pobudka' in c_clean:
@@ -1021,7 +1052,6 @@ wycieczka_html = f"""<!DOCTYPE html>
         }}
         .back-nav:active {{ background: #d5cbc0; }}
 
-        /* PRZYCISKI CHECKLIST / ZADAŃ W POZIOMIE */
         .modal-btn-row {{
             display: flex;
             gap: 6px;
@@ -1378,7 +1408,6 @@ wycieczka_html = f"""<!DOCTYPE html>
             letter-spacing: 0.5px;
         }}
 
-        /* MODAL POPUP STYLES */
         .modal-overlay {{
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -1584,6 +1613,4 @@ wycieczka_html = f"""<!DOCTYPE html>
 
 with open("wycieczka.html", "w", encoding="utf-8") as f:
     f.write(wycieczka_html)
-print(f"-> Zapisano wycieczka.html z przyciskami i modalami checklist!")
-
-print("Gotowe!")
+print(f"-> Zapisano wycieczka.html z pobudką równą {pobudka_val}")
