@@ -1,14 +1,20 @@
 import pandas as pd
 import json
 import os
+import re
+import time
 
-print("Wczytuję dane z pliku CSV...")
+CACHE_BUSTER = int(time.time())
+
+print("Wczytuję dane z plików CSV...")
+
+# --- 1. WCZYTANIE PLIKU MIEJSCA.CSV ---
 try:
-    df = pd.read_csv("miejsca.csv", encoding="utf-8-sig")
+    df_places = pd.read_csv("miejsca.csv", encoding="utf-8-sig")
 except:
-    df = pd.read_csv("miejsca.csv", encoding="cp1250")
+    df_places = pd.read_csv("miejsca.csv", encoding="cp1250")
 
-df.columns = df.columns.str.strip()
+df_places.columns = df_places.columns.str.strip()
 
 def clean_text(val):
     if pd.isna(val): return ""
@@ -22,7 +28,6 @@ def format_tasks(text):
         t1 = lines[0].replace("1. ", "")
         tasks.append(f"- {t1.strip()}")
         rest = "2. " + " 2. ".join(lines[1:])
-        import re
         parts = re.split(r'\s(?=\d+\.)', rest)
         for p in parts:
             p = re.sub(r'^\d+\.\s*', '', p)
@@ -41,8 +46,9 @@ COLORS = {
 DEFAULT_COLOR = '#DC3545'
 
 locations = []
+place_color_map = {}
 
-for idx, row in df.iterrows():
+for idx, row in df_places.iterrows():
     try:
         num = int(row['numer miejsca'])
     except:
@@ -52,6 +58,7 @@ for idx, row in df.iterrows():
     typ_raw = str(row.get('typ', '')).strip().lower()
     bg_color = COLORS.get(typ_raw, DEFAULT_COLOR)
     text_color = "black" if typ_raw == 'activity' else "white"
+    place_color_map[str(num)] = {"bg": bg_color, "text": text_color}
     
     coords_raw = str(row.get('współrzędne', '')).strip()
     lat, lon = None, None
@@ -63,14 +70,9 @@ for idx, row in df.iterrows():
         except:
             pass
 
-    opis_val = ""
-    ile_jedzenia_val = ""
-    potencjal_val = ""
-    strategie_val = ""
-    sun_val = ""
-    adhd_val = ""
+    opis_val, ile_jedzenia_val, potencjal_val, strategie_val, sun_val, adhd_val = "", "", "", "", "", ""
     
-    for col in df.columns:
+    for col in df_places.columns:
         col_lower = col.lower().replace(" ", "").replace("_", "")
         if col_lower == 'opis':
             opis_val = clean_text(row[col])
@@ -110,7 +112,8 @@ for idx, row in df.iterrows():
         "zadania": format_tasks(clean_text(row.get('Zadania dla dzieci', '')))
     })
 
-html_template = """<!DOCTYPE html>
+# --- 2. GENEROWANIE INDEX.HTML (ZWYKŁY STRING BEZ F-STRING) ---
+index_html = """<!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
@@ -182,6 +185,16 @@ html_template = """<!DOCTYPE html>
         }
         .legend-row { display: flex; align-items: center; margin-bottom: 3px; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border: 1px solid #aaa; flex-shrink: 0; }
+
+        .trip-btn {
+            position: absolute; bottom: 20px; right: 10px; z-index: 1500;
+            background: #663223; color: white;
+            padding: 10px 18px; border-radius: 30px; font-size: 11pt; font-weight: 900;
+            text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 6px;
+            border: 2px solid #b89b82; transition: transform 0.2s;
+        }
+        .trip-btn:active { transform: scale(0.95); background: #4a2419; }
 
         #side-panel {
             position: fixed; top: 0; left: -100%; width: 85%; max-width: 340px; height: 100%;
@@ -278,7 +291,7 @@ html_template = """<!DOCTYPE html>
             background-color: #663223; color: white; padding: 6px 14px; border-radius: 20px;
             text-decoration: none; font-size: 9pt; font-weight: bold; text-transform: uppercase;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        }}
+        }
         .gps-nav-btn:active { transform: scale(0.95); }
 
         .logistics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background-color: #d5cbc0; }
@@ -360,6 +373,8 @@ html_template = """<!DOCTYPE html>
             <div class="legend-row"><div class="legend-dot" style="background:#00BFFF;"></div>Plaża</div>
         </div>
     </div>
+
+    <a href="wycieczka.html" class="trip-btn">🚗 Trip</a>
 
     <div id="side-panel">
         <div class="panel-header">
@@ -668,7 +683,7 @@ html_template = """<!DOCTYPE html>
             let searchUrl = "https://www.google.com/search?q=" + encodeURIComponent(loc.name + " Kreta");
             document.getElementById('d-title-link').href = searchUrl;
 
-            let imgStr = `<img src="zdjecia/${loc.id}.jpg" onerror="this.outerHTML='<div class=\\'missing-img\\'>BRAK ZDJĘCIA</div>'" />`;
+            let imgStr = '<img src="zdjecia/' + loc.id + '.jpg" onerror="this.outerHTML=\\'<div class=\\\\\\'missing-img\\\\\\'>BRAK ZDJĘCIA</div>\\'" />';
             document.getElementById('d-image').innerHTML = imgStr;
             
             let opisBox = document.getElementById('d-opis-container');
@@ -681,7 +696,7 @@ html_template = """<!DOCTYPE html>
             
             let gpsAction = document.getElementById('d-gps-action');
             if(loc.lat && loc.lon) {
-                gpsAction.innerHTML = `<a href="https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lon}" target="_blank" class="gps-nav-btn">Nawiguj ➔</a>`;
+                gpsAction.innerHTML = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + loc.lat + ',' + loc.lon + '" target="_blank" class="gps-nav-btn">Nawiguj ➔</a>';
             } else {
                 gpsAction.innerHTML = '<span style="font-size:9pt; color:#888;">Brak współrzędnych</span>';
             }
@@ -748,8 +763,8 @@ html_template = """<!DOCTYPE html>
             
             let zCzymTxt = loc.z_czym || "-";
             if (zCzymTxt !== "-") {
-                zCzymTxt = zCzymTxt.replace(/\(?Miejsce\s+(\d+)\)?/gi, function(match, id) {
-                    return `<span class="place-link" onclick="jumpToPlace('${id}')">${match}</span>`;
+                zCzymTxt = zCzymTxt.replace(/\\(?Miejsce\\s+(\\d+)\\)?/gi, function(match, id) {
+                    return '<span class="place-link" onclick="jumpToPlace(\\'' + id + '\\')">' + match + '</span>';
                 });
             }
             document.getElementById('d-lacz').innerHTML = zCzymTxt;
@@ -763,9 +778,656 @@ html_template = """<!DOCTYPE html>
 </body>
 </html>"""
 
-final_html = html_template.replace("/*LOCATIONS_PLACEHOLDER*/", json.dumps(locations, ensure_ascii=False))
+final_index_html = index_html.replace("/*LOCATIONS_PLACEHOLDER*/", json.dumps(locations, ensure_ascii=False))
 
 with open("index.html", "w", encoding="utf-8") as f:
-    f.write(final_html)
+    f.write(final_index_html)
+print("-> Zapisano index.html")
 
-print("Gotowe! Wygenerowano plik 'index.html' na podstawie pliku 'miejsca.csv'.")
+
+# --- 3. GENEROWANIE PODSTRONY WYCIECZKA.HTML ---
+pobudka_val = "05:00"
+wyjazd_val = "05:30"
+powrot_val = "17:00"
+calkowity_czas_val = ""
+opis_wycieczki_val = ""
+ogolna_taktyka_val = ""
+tytul_wycieczki_val = ""
+first_place_id = "1"
+cards_html = ""
+
+trip_map_points = []
+home_lat, home_lon = 35.591389, 24.091750
+trip_map_points.append({"lat": home_lat, "lon": home_lon, "name": "Baza domowa (Stavros)", "is_home": True, "id": "0"})
+
+trip_csv_name = "karta_wycieczki_4.csv" if os.path.exists("karta_wycieczki_4.csv") else ("karta_wycieczki_3.csv" if os.path.exists("karta_wycieczki_3.csv") else ("karta_wycieczki_2.csv" if os.path.exists("karta_wycieczki_2.csv") else "karta_wycieczki.csv"))
+
+if os.path.exists(trip_csv_name):
+    try:
+        df_trip = pd.read_csv(trip_csv_name, encoding="utf-8-sig")
+    except:
+        df_trip = pd.read_csv(trip_csv_name, encoding="cp1250")
+    
+    df_trip.columns = df_trip.columns.str.strip()
+
+    if not df_trip.empty:
+        first_row = df_trip.iloc[0]
+        for col in df_trip.columns:
+            c_clean = col.lower().replace(" ", "").replace("_", "")
+            if 'pobudka' in c_clean:
+                v = clean_text(first_row[col])
+                if v and v != '-': pobudka_val = v
+            elif 'wyjazd' in c_clean:
+                v = clean_text(first_row[col])
+                if v and v != '-':
+                    wyjazd_val = re.sub(r'\(ze\s*stra?vros\)', '', v, flags=re.IGNORECASE).strip()
+            elif 'powrot' in c_clean or 'powrót' in c_clean:
+                v = clean_text(first_row[col])
+                if v and v != '-': powrot_val = v
+            elif 'calkowityczas' in c_clean:
+                v = clean_text(first_row[col])
+                if v and v != '-':
+                    try:
+                        v_float = float(v)
+                        calkowity_czas_val = f"{v_float:g} godz."
+                    except:
+                        calkowity_czas_val = v
+            elif 'tytul' in c_clean:
+                tytul_wycieczki_val = clean_text(first_row[col])
+            elif 'opis' in c_clean and not opis_wycieczki_val:
+                opis_wycieczki_val = clean_text(first_row[col])
+            elif ('calosciowataktyka' in c_clean or 'taktyka' in c_clean) and not ogolna_taktyka_val:
+                ogolna_taktyka_val = clean_text(first_row[col])
+            elif ('oryginalne' in c_clean or 'idmiejsca' in c_clean):
+                first_place_id = clean_text(first_row[col]).replace(".0", "")
+    
+    for idx, row in df_trip.iterrows():
+        place_id = None
+        step_num = None
+        for col in df_trip.columns:
+            c_clean = col.lower().replace(" ", "").replace("_", "")
+            if 'oryginalne' in c_clean or 'idmiejsca' in c_clean or c_clean == 'numermiejsca':
+                place_id = clean_text(row[col]).replace(".0", "")
+            if 'krok' in c_clean:
+                step_num = clean_text(row[col]).replace(".0", "")
+                
+        if not place_id:
+            place_id = str(idx + 1)
+        if not step_num:
+            step_num = str(idx + 1)
+
+        name = clean_text(row.get('nazwa', ''))
+        clean_name = re.sub(r'^\d+\.\s*', '', name)
+        
+        coords = clean_text(row.get('wspolrzedne', ''))
+        
+        if coords:
+            try:
+                parts = coords.replace(';', ',').split(',')
+                plat = float(parts[0].strip())
+                plon = float(parts[1].strip())
+                c_info = place_color_map.get(str(place_id), {"bg": "#663223", "text": "white"})
+                trip_map_points.append({
+                    "lat": plat,
+                    "lon": plon,
+                    "name": clean_name,
+                    "id": str(place_id),
+                    "is_home": False,
+                    "bg": c_info["bg"],
+                    "text": c_info["text"]
+                })
+            except:
+                pass
+
+        okienko = clean_text(row.get('okienko_zwiedzania', '-'))
+        ewakuacja = clean_text(row.get('godzina_ewakuacji', '-'))
+        taktyka = clean_text(row.get('podsumowanie_taktyki', ''))
+        red_zone = clean_text(row.get('czerwona_strefa_ostrzezenie', ''))
+        luz_zone = clean_text(row.get('strefa_luzu_i_regeneracji', ''))
+
+        circle_style = place_color_map.get(str(place_id), {"bg": "#663223", "text": "white"})
+        bg_col = circle_style["bg"]
+        txt_col = circle_style["text"]
+
+        if coords:
+            name_link_html = f'<a href="https://www.google.com/maps/dir/?api=1&destination={coords.replace(" ", "")}" target="_blank" class="nav-name-link" title="Nawiguj">{clean_name}</a>'
+        else:
+            name_link_html = f'<span class="nav-name-text">{clean_name}</span>'
+
+        tactic_box_html = f'''<div class="tile-subbox tactic-subbox"><div class="subbox-title">🎯 Taktyka</div><div class="subbox-text">{taktyka}</div></div>''' if taktyka and taktyka != '-' else ''
+        regen_box_html = f'''<div class="tile-subbox regen-subbox"><div class="subbox-title">🌿 Strefa luzu i regeneracji</div><div class="subbox-text">{luz_zone}</div></div>''' if luz_zone and luz_zone != '-' and luz_zone.lower() != 'brak' else ''
+        alert_box_html = f'''<div class="tile-subbox alert-subbox"><div class="subbox-title">⚠️ Ostrzeżenie</div><div class="subbox-text">{red_zone}</div></div>''' if red_zone and red_zone != '-' and red_zone.lower() != 'brak' else ''
+
+        cards_html += f"""
+        <div class="timeline-item">
+            <div class="timeline-node">
+                <a href="index.html?place={place_id}&from=wycieczka" class="place-circle" style="background-color:{bg_col}; color:{txt_col};" title="Zobacz kartę miejsca">{place_id}</a>
+            </div>
+            <div class="place-tile">
+                <div class="tile-header-row">
+                    <div class="tile-name">{name_link_html}</div>
+                </div>
+                
+                <div class="tile-hours-grid">
+                    <div class="hour-box">
+                        <div class="h-label">🕐 Harmonogram</div>
+                        <div class="h-val">{okienko}</div>
+                    </div>
+                    <div class="hour-box evac-box">
+                        <div class="h-label">🚨 Ewakuacja</div>
+                        <div class="h-val">{ewakuacja}</div>
+                    </div>
+                </div>
+
+                {tactic_box_html}
+                {regen_box_html}
+                {alert_box_html}
+            </div>
+        </div>
+        """
+
+opis_box_html = ""
+if opis_wycieczki_val and opis_wycieczki_val != '-':
+    opis_box_html = f"""
+    <div class="trip-description-card">
+        <div class="desc-header">📝 Opis i cel wycieczki</div>
+        <div class="desc-body">{opis_wycieczki_val}</div>
+    </div>
+    """
+
+if ogolna_taktyka_val and ogolna_taktyka_val != '-':
+    taktyki_final_html = f"<p style='line-height:1.45;'>{ogolna_taktyka_val}</p>"
+else:
+    taktyki_final_html = "<p>Standardowa realizacja trasy zgodnie z harmonogramem.</p>"
+
+title_card_html = f"""
+        <div class="title-banner-card">
+            <div class="title-banner-text">{tytul_wycieczki_val}</div>
+        </div>
+""" if tytul_wycieczki_val else ""
+
+wycieczka_html = f"""<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Aktualna Wycieczka</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f6efe8;
+            color: #1a110b;
+            padding: 12px;
+            padding-bottom: 40px;
+            font-size: 11pt;
+        }}
+
+        .page-container {{
+            max-width: 680px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }}
+
+        .top-header {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 0 10px 0;
+            border-bottom: 2px solid #b89b82;
+        }}
+        .header-title {{
+            font-size: 20pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            color: #1a110b;
+        }}
+        .back-nav {{
+            text-decoration: none;
+            color: #663223;
+            font-weight: 900;
+            font-size: 10.5pt;
+            text-transform: uppercase;
+            background: #e6ded1;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid #b89b82;
+            display: inline-block;
+            margin-bottom: 6px;
+        }}
+        .back-nav:active {{ background: #d5cbc0; }}
+
+        .hero-image-card {{
+            width: 100%;
+            height: 220px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 2px solid #8b6b55;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            background: #d6e2e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .hero-image-card img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }}
+
+        .title-banner-card {{
+            background: #e6ded1;
+            border: 2px solid #8b6b55;
+            border-radius: 12px;
+            padding: 12px 16px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }}
+        .title-banner-text {{
+            font-size: 12.5pt;
+            font-weight: 900;
+            color: #663223;
+            letter-spacing: 0.4px;
+            line-height: 1.35;
+        }}
+
+        .logistics-card {{
+            background: #e6ded1;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 2px solid #b89b82;
+            box-shadow: 0 3px 10px rgba(102, 50, 35, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        .logistics-title {{
+            font-size: 14pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #663223;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid #d5cbc0;
+            padding-bottom: 8px;
+        }}
+
+        .logistics-metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }}
+        @media(min-width: 520px) {{
+            .logistics-metrics-grid {{
+                grid-template-columns: 1fr 1fr 1.2fr 1.1fr;
+            }}
+        }}
+
+        .metric-cell {{
+            background: #fdfbf9;
+            border-radius: 10px;
+            padding: 10px 12px;
+            border: 1px solid #d5cbc0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }}
+        .metric-label {{
+            font-size: 8.5pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #7a6b5d;
+            margin-bottom: 3px;
+            letter-spacing: 0.3px;
+        }}
+        .metric-value {{
+            font-size: 11pt;
+            font-weight: 900;
+            color: #1a110b;
+            line-height: 1.25;
+        }}
+
+        .trip-description-card {{
+            background: #f1dfd1;
+            border: 2px solid #8b6b55;
+            border-radius: 14px;
+            padding: 12px 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }}
+        .desc-header {{
+            font-weight: 900;
+            font-size: 11pt;
+            text-transform: uppercase;
+            color: #663223;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }}
+        .desc-body {{
+            font-size: 10.5pt;
+            line-height: 1.45;
+            color: #1a110b;
+        }}
+
+        .trip-map-container {{
+            width: 100%;
+            height: 200px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 2px solid #8b6b55;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            position: relative;
+        }}
+        #trip-map {{
+            width: 100%;
+            height: 100%;
+        }}
+
+        .timeline-container {{
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+        }}
+
+        .timeline-item {{
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            position: relative;
+        }}
+
+        .timeline-node {{
+            width: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 12px;
+            position: relative;
+            flex-shrink: 0;
+        }}
+
+        .timeline-item::before {{
+            content: "";
+            position: absolute;
+            left: 17px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: #8b6b55;
+            z-index: 1;
+        }}
+        .timeline-item:first-child::before {{
+            top: 25px;
+        }}
+        .timeline-item:last-child::before {{
+            bottom: calc(100% - 25px);
+        }}
+
+        .place-circle {{
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 12.5pt;
+            text-decoration: none;
+            border: 2.5px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+            z-index: 2;
+            cursor: pointer;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }}
+        .place-circle:active {{
+            transform: scale(0.9);
+        }}
+
+        .place-tile {{
+            background: #ede4d8;
+            border-radius: 14px;
+            border: 1.5px solid #b89b82;
+            padding: 14px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+            z-index: 2;
+        }}
+
+        .tile-header-row {{
+            border-bottom: 1.5px solid #d5cbc0;
+            padding-bottom: 8px;
+        }}
+
+        .nav-name-link {{
+            font-weight: 900;
+            font-size: 12pt;
+            color: #663223;
+            text-decoration: underline;
+            line-height: 1.3;
+            display: inline-block;
+        }}
+        .nav-name-link:active {{
+            color: #1a110b;
+        }}
+
+        .tile-hours-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }}
+
+        .hour-box {{
+            background: #fdfbf9;
+            border-radius: 10px;
+            padding: 8px 10px;
+            border: 1px solid #d5cbc0;
+        }}
+        .evac-box {{
+            background: #fae8e8;
+            border-color: #dca7a7;
+        }}
+        .h-label {{
+            font-size: 7.5pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #7a6b5d;
+            margin-bottom: 2px;
+            letter-spacing: 0.3px;
+        }}
+        .evac-box .h-label {{
+            color: #9c2c2c;
+        }}
+        .h-val {{
+            font-size: 10pt;
+            font-weight: 900;
+            color: #1a110b;
+            line-height: 1.3;
+        }}
+
+        .tile-subbox {{
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 10pt;
+            line-height: 1.4;
+        }}
+        .subbox-title {{
+            font-weight: 900;
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+            letter-spacing: 0.4px;
+        }}
+        .subbox-text {{
+            font-size: 10pt;
+        }}
+
+        .tactic-subbox {{
+            background: #dfd8cf;
+            border: 1px solid #c9bea8;
+            color: #1a110b;
+        }}
+        .tactic-subbox .subbox-title {{
+            color: #663223;
+        }}
+
+        .regen-subbox {{
+            background: #eafaf1;
+            border: 1px solid #a2d9bc;
+            color: #0f5132;
+        }}
+        .regen-subbox .subbox-title {{
+            color: #198754;
+        }}
+
+        .alert-subbox {{
+            background: #fde8e8;
+            border: 1px solid #e07171;
+            color: #842029;
+        }}
+        .alert-subbox .subbox-title {{
+            color: #b02a37;
+        }}
+
+        .tactic-box {{
+            background: #c3cbcf;
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 10.5pt;
+            line-height: 1.45;
+            color: #1a110b;
+            border: 1.5px solid #aeb5b8;
+            margin-top: 6px;
+        }}
+        .tactic-title {{
+            text-align: center;
+            font-weight: 900;
+            font-size: 12pt;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            color: #1a110b;
+            letter-spacing: 0.5px;
+        }}
+    </style>
+</head>
+<body>
+
+    <div class="page-container">
+        <div>
+            <a href="index.html" class="back-nav">⬅ Wróć do mapy</a>
+        </div>
+
+        <div class="top-header">
+            <div class="header-title">AKTUALNA WYCIECZKA</div>
+        </div>
+
+        <!-- ZDJĘCIE PIERWSZEGO MIEJSCA -->
+        <div class="hero-image-card">
+            <img src="zdjecia/{first_place_id}.jpg?v={CACHE_BUSTER}" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10pt;color:#666;font-weight:bold;\\'>Kreta</div>'" />
+        </div>
+
+        <!-- STYLOWA RAMKA TYTUŁU POD ZDJĘCIEM -->
+        {title_card_html}
+
+        <!-- LOGISTYKA DNIA -->
+        <div class="logistics-card">
+            <div class="logistics-title">🧭 Logistyka dnia</div>
+            <div class="logistics-metrics-grid">
+                <div class="metric-cell">
+                    <div class="metric-label">⏰ Pobudka</div>
+                    <div class="metric-value">{pobudka_val}</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-label">🚗 Wyjazd</div>
+                    <div class="metric-value">{wyjazd_val}</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-label">🏠 Powrót</div>
+                    <div class="metric-value">{powrot_val}</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-label">⏱️ Całkowity czas</div>
+                    <div class="metric-value">{calkowity_czas_val if calkowity_czas_val else "Wg planu"}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPIS WYCIECZKI -->
+        {opis_box_html}
+
+        <!-- MAPA TRASY WYCIECZKI -->
+        <div class="trip-map-container">
+            <div id="trip-map"></div>
+        </div>
+
+        <!-- KAFELKOWY UKŁAD MIEJSC -->
+        <div class="timeline-container">
+            {cards_html}
+        </div>
+
+        <!-- PODSUMOWANIE TAKTYKI CAŁEGO DNIA -->
+        <div class="tactic-box">
+            <div class="tactic-title">PODSUMOWANIE TAKTYKI</div>
+            {taktyki_final_html}
+        </div>
+    </div>
+
+    <script>
+        const tripPoints = {json.dumps(trip_map_points, ensure_ascii=False)};
+        
+        var tripMap = L.map('trip-map', {{ zoomControl: false }}).setView([35.3, 24.5], 9);
+        L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+            attribution: '&copy; CARTO',
+            maxZoom: 19
+        }}).addTo(tripMap);
+
+        const latLngs = [];
+
+        tripPoints.forEach((pt) => {{
+            latLngs.push([pt.lat, pt.lon]);
+            
+            let iconHtml = '';
+            if (pt.is_home) {{
+                iconHtml = `<div style="background-color:#1a110b;color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.4);">🏠</div>`;
+            }} else {{
+                iconHtml = `<div style="background-color:${{pt.bg}};color:${{pt.text}};border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-family:Arial;font-size:12px;font-weight:bold;border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.4);">${{pt.id}}</div>`;
+            }}
+            
+            let customIcon = L.divIcon({{ html: iconHtml, className: '', iconSize: [26,26], iconAnchor: [13,13] }});
+            let marker = L.marker([pt.lat, pt.lon], {{ icon: customIcon }}).addTo(tripMap);
+            marker.bindPopup(`<b>${{pt.name}}</b>`);
+        }});
+
+        if (latLngs.length > 1) {{
+            L.polyline(latLngs, {{
+                color: '#663223',
+                weight: 3.5,
+                opacity: 0.8,
+                dashArray: '6, 6'
+            }}).addTo(tripMap);
+            
+            tripMap.fitBounds(latLngs, {{ padding: [20, 20] }});
+        }}
+    </script>
+</body>
+</html>"""
+
+with open("wycieczka.html", "w", encoding="utf-8") as f:
+    f.write(wycieczka_html)
+print(f"-> Zapisano wycieczka.html z tytułem w ramce pod zdjęciem.")
+
+print("Gotowe!")
