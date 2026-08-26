@@ -27,6 +27,51 @@
             gap: 14px;
         }
 
+        .top-nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 2px;
+        }
+        .back-nav {
+            text-decoration: none;
+            color: #663223;
+            font-weight: 900;
+            font-size: 9.5pt;
+            text-transform: uppercase;
+            background: #e6ded1;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #b89b82;
+            display: inline-block;
+        }
+        .back-nav:active { background: #d5cbc0; }
+
+        /* PRZYCISKI CHECKLIST / ZADAŃ W POZIOMIE */
+        .modal-btn-row {
+            display: flex;
+            gap: 6px;
+        }
+        .modal-trigger-btn {
+            background: #663223;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 9pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: transform 0.15s;
+        }
+        .modal-trigger-btn:active {
+            transform: scale(0.95);
+            background: #4a2419;
+        }
+
         .top-header {
             display: flex;
             align-items: center;
@@ -42,20 +87,6 @@
             text-align: center;
             color: #1a110b;
         }
-        .back-nav {
-            text-decoration: none;
-            color: #663223;
-            font-weight: 900;
-            font-size: 10.5pt;
-            text-transform: uppercase;
-            background: #e6ded1;
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1px solid #b89b82;
-            display: inline-block;
-            margin-bottom: 6px;
-        }
-        .back-nav:active { background: #d5cbc0; }
 
         .hero-image-card {
             width: 100%;
@@ -374,13 +405,65 @@
             color: #1a110b;
             letter-spacing: 0.5px;
         }
+
+        /* MODAL POPUP STYLES */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-card {
+            background: #f6efe8;
+            border: 2px solid #8b6b55;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 450px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            background: #663223;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 900;
+            font-size: 11pt;
+            text-transform: uppercase;
+        }
+        .modal-close {
+            cursor: pointer;
+            font-size: 14pt;
+        }
+        .modal-body {
+            padding: 16px;
+            font-size: 10.5pt;
+            color: #1a110b;
+        }
     </style>
 </head>
 <body>
 
     <div class="page-container">
-        <div>
+        <div class="top-nav-bar">
             <a href="index.html" class="back-nav">⬅ Wróć do mapy</a>
+            <div class="modal-btn-row">
+                <button class="modal-trigger-btn" onclick="openModal('sprzet-modal')">🎒 Sprzęt</button>
+                <button class="modal-trigger-btn" onclick="openModal('prowiant-modal')">🥪 Prowiant</button>
+                <button class="modal-trigger-btn" onclick="openModal('zadania-modal')">🧒 Zadania</button>
+            </div>
         </div>
 
         <div class="top-header">
@@ -389,7 +472,7 @@
 
         <!-- ZDJĘCIE PIERWSZEGO MIEJSCA -->
         <div class="hero-image-card">
-            <img src="zdjecia/7.jpg?v=1787749598" onerror="this.outerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10pt;color:#666;font-weight:bold;\'>Kreta</div>'" />
+            <img src="zdjecia/7.jpg?v=1787750115" onerror="this.outerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10pt;color:#666;font-weight:bold;\'>Kreta</div>'" />
         </div>
 
         <!-- STYLOWA RAMKA TYTUŁU POD ZDJĘCIEM -->
@@ -525,7 +608,56 @@
         </div>
     </div>
 
+    <!-- MODALE POPUP -->
+    <div id="sprzet-modal" class="modal-overlay" onclick="closeModalOutside(event, 'sprzet-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>🎒 Checklista sprzętu</span>
+                <span class="modal-close" onclick="closeModal('sprzet-modal')">✖</span>
+            </div>
+            <div class="modal-body">
+                <ul style='padding-left:20px; line-height:1.4;'><li style='margin-bottom:6px;'>Czapki z daszkiem</li><li style='margin-bottom:6px;'>okulary przeciwsłoneczne</li><li style='margin-bottom:6px;'>krem z filtrem UV</li><li style='margin-bottom:6px;'>parasol przeciwsłoneczny (mobilny cień)</li><li style='margin-bottom:6px;'>wygodne buty sportowe.</li></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="prowiant-modal" class="modal-overlay" onclick="closeModalOutside(event, 'prowiant-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>🥪 Checklista prowiantu</span>
+                <span class="modal-close" onclick="closeModal('prowiant-modal')">✖</span>
+            </div>
+            <div class="modal-body">
+                <ul style='padding-left:20px; line-height:1.4;'><li style='margin-bottom:6px;'>Zapas chłodnej wody (min. 1.5L na osobę)</li><li style='margin-bottom:6px;'>banany</li><li style='margin-bottom:6px;'>krakersy</li><li style='margin-bottom:6px;'>musy owocowe (Anti-Hunger Kit) na drogę.</li></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="zadania-modal" class="modal-overlay" onclick="closeModalOutside(event, 'zadania-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>🧒 Zadania na drogę dla dzieci</span>
+                <span class="modal-close" onclick="closeModal('zadania-modal')">✖</span>
+            </div>
+            <div class="modal-body">
+                <div style='line-height:1.45;'>W DRODZE: 1. Poszukiwacze Souda: Podczas jazdy spójrzcie w lewo na wielką Zatokę Souda. Kto pierwszy wypatrzy ogromny biały prom lub okręt wojenny? Policzcie je głośno! 2. Strażnicy Ruin: Kto pierwszy wypatrzy starożytne mury obronne wznoszące się na wzgórzu? NA MIEJSCU: 1. Stań na środku starożytnego teatru i wypowiedz szeptem swoje imię – sprawdź, czy usłyszysz echo. 2. Policz, ile kroków ma gigantyczna rzymska cysterna na wodę. 3. Znajdź kamień z wyrytą starożytną literą lub symbolem.</div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        function closeModalOutside(event, modalId) {
+            if (event.target.id === modalId) {
+                closeModal(modalId);
+            }
+        }
+
         const tripPoints = [{"lat": 35.591389, "lon": 24.09175, "name": "Baza domowa (Stavros)", "is_home": true, "id": "0"}, {"lat": 35.4628, "lon": 24.1432, "name": "Ancient Aptera", "id": "7", "is_home": false, "bg": "#E83E8C", "text": "white"}, {"lat": 35.3218, "lon": 24.2185, "name": "Dourakis Winery", "id": "38", "is_home": false, "bg": "#28A745", "text": "white"}, {"lat": 35.5908, "lon": 24.0761, "name": "Plaża w Stavros", "id": "46", "is_home": false, "bg": "#00BFFF", "text": "white"}];
         
         var tripMap = L.map('trip-map', { zoomControl: false }).setView([35.3, 24.5], 9);

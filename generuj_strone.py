@@ -35,6 +35,17 @@ def format_tasks(text):
         return "<br/>".join(tasks)
     return text.replace("\n", "<br/>")
 
+def format_checklist_html(text):
+    if not text or text == '-': return "<p>Brak pozycji.</p>"
+    items = [x.strip() for x in text.replace(';', ',').split(',') if x.strip()]
+    html_items = "".join([f"<li style='margin-bottom:6px;'>{item}</li>" for item in items])
+    return f"<ul style='padding-left:20px; line-height:1.4;'>{html_items}</ul>"
+
+def format_tasks_html(text):
+    if not text or text == '-': return "<p>Brak zadań.</p>"
+    formatted = text.replace('\n', '<br>')
+    return f"<div style='line-height:1.45;'>{formatted}</div>"
+
 COLORS = {
     'must have': '#E83E8C',
     'nice to have': '#FD7E14',
@@ -112,7 +123,7 @@ for idx, row in df_places.iterrows():
         "zadania": format_tasks(clean_text(row.get('Zadania dla dzieci', '')))
     })
 
-# --- 2. GENEROWANIE INDEX.HTML (ZWYKŁY STRING BEZ F-STRING) ---
+# --- 2. GENEROWANIE INDEX.HTML ---
 index_html = """<!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -660,7 +671,7 @@ index_html = """<!DOCTYPE html>
                 document.getElementById('details-overlay').classList.remove('active');
                 if(selectedLoc) {
                     document.getElementById('mini-popup').classList.add('active');
-                    document.getElementById('bottom-dock').classList.add('hidden');
+                    document.getElementById('bottom-dock').classList.remove('hidden');
                 } else {
                     document.getElementById('bottom-dock').classList.remove('hidden');
                 }
@@ -793,6 +804,9 @@ calkowity_czas_val = ""
 opis_wycieczki_val = ""
 ogolna_taktyka_val = ""
 tytul_wycieczki_val = ""
+sprzet_val = ""
+prowiant_val = ""
+zadania_dla_dzieci_val = ""
 first_place_id = "1"
 cards_html = ""
 
@@ -838,6 +852,12 @@ if os.path.exists(trip_csv_name):
                 opis_wycieczki_val = clean_text(first_row[col])
             elif ('calosciowataktyka' in c_clean or 'taktyka' in c_clean) and not ogolna_taktyka_val:
                 ogolna_taktyka_val = clean_text(first_row[col])
+            elif 'sprzet' in c_clean or 'sprzęt' in c_clean:
+                sprzet_val = clean_text(first_row[col])
+            elif 'prowiant' in c_clean:
+                prowiant_val = clean_text(first_row[col])
+            elif 'zadania' in c_clean:
+                zadania_dla_dzieci_val = clean_text(first_row[col])
             elif ('oryginalne' in c_clean or 'idmiejsca' in c_clean):
                 first_place_id = clean_text(first_row[col]).replace(".0", "")
     
@@ -946,6 +966,10 @@ title_card_html = f"""
         </div>
 """ if tytul_wycieczki_val else ""
 
+sprzet_html = format_checklist_html(sprzet_val)
+prowiant_html = format_checklist_html(prowiant_val)
+zadania_html = format_tasks_html(zadania_dla_dzieci_val)
+
 wycieczka_html = f"""<!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -975,6 +999,51 @@ wycieczka_html = f"""<!DOCTYPE html>
             gap: 14px;
         }}
 
+        .top-nav-bar {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 2px;
+        }}
+        .back-nav {{
+            text-decoration: none;
+            color: #663223;
+            font-weight: 900;
+            font-size: 9.5pt;
+            text-transform: uppercase;
+            background: #e6ded1;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #b89b82;
+            display: inline-block;
+        }}
+        .back-nav:active {{ background: #d5cbc0; }}
+
+        /* PRZYCISKI CHECKLIST / ZADAŃ W POZIOMIE */
+        .modal-btn-row {{
+            display: flex;
+            gap: 6px;
+        }}
+        .modal-trigger-btn {{
+            background: #663223;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 9pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: transform 0.15s;
+        }}
+        .modal-trigger-btn:active {{
+            transform: scale(0.95);
+            background: #4a2419;
+        }}
+
         .top-header {{
             display: flex;
             align-items: center;
@@ -990,20 +1059,6 @@ wycieczka_html = f"""<!DOCTYPE html>
             text-align: center;
             color: #1a110b;
         }}
-        .back-nav {{
-            text-decoration: none;
-            color: #663223;
-            font-weight: 900;
-            font-size: 10.5pt;
-            text-transform: uppercase;
-            background: #e6ded1;
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1px solid #b89b82;
-            display: inline-block;
-            margin-bottom: 6px;
-        }}
-        .back-nav:active {{ background: #d5cbc0; }}
 
         .hero-image-card {{
             width: 100%;
@@ -1322,13 +1377,65 @@ wycieczka_html = f"""<!DOCTYPE html>
             color: #1a110b;
             letter-spacing: 0.5px;
         }}
+
+        /* MODAL POPUP STYLES */
+        .modal-overlay {{
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }}
+        .modal-overlay.active {{
+            display: flex;
+        }}
+        .modal-card {{
+            background: #f6efe8;
+            border: 2px solid #8b6b55;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 450px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }}
+        .modal-header {{
+            background: #663223;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 900;
+            font-size: 11pt;
+            text-transform: uppercase;
+        }}
+        .modal-close {{
+            cursor: pointer;
+            font-size: 14pt;
+        }}
+        .modal-body {{
+            padding: 16px;
+            font-size: 10.5pt;
+            color: #1a110b;
+        }}
     </style>
 </head>
 <body>
 
     <div class="page-container">
-        <div>
+        <div class="top-nav-bar">
             <a href="index.html" class="back-nav">⬅ Wróć do mapy</a>
+            <div class="modal-btn-row">
+                <button class="modal-trigger-btn" onclick="openModal('sprzet-modal')">🎒 Sprzęt</button>
+                <button class="modal-trigger-btn" onclick="openModal('prowiant-modal')">🥪 Prowiant</button>
+                <button class="modal-trigger-btn" onclick="openModal('zadania-modal')">🧒 Zadania</button>
+            </div>
         </div>
 
         <div class="top-header">
@@ -1386,7 +1493,56 @@ wycieczka_html = f"""<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- MODALE POPUP -->
+    <div id="sprzet-modal" class="modal-overlay" onclick="closeModalOutside(event, 'sprzet-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>🎒 Checklista sprzętu</span>
+                <span class="modal-close" onclick="closeModal('sprzet-modal')">✖</span>
+            </div>
+            <div class="modal-body">
+                {sprzet_html}
+            </div>
+        </div>
+    </div>
+
+    <div id="prowiant-modal" class="modal-overlay" onclick="closeModalOutside(event, 'prowiant-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>🥪 Checklista prowiantu</span>
+                <span class="modal-close" onclick="closeModal('prowiant-modal')">✖</span>
+            </div>
+            <div class="modal-body">
+                {prowiant_html}
+            </div>
+        </div>
+    </div>
+
+    <div id="zadania-modal" class="modal-overlay" onclick="closeModalOutside(event, 'zadania-modal')">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>🧒 Zadania na drogę dla dzieci</span>
+                <span class="modal-close" onclick="closeModal('zadania-modal')">✖</span>
+            </div>
+            <div class="modal-body">
+                {zadania_html}
+            </div>
+        </div>
+    </div>
+
     <script>
+        function openModal(modalId) {{
+            document.getElementById(modalId).classList.add('active');
+        }}
+        function closeModal(modalId) {{
+            document.getElementById(modalId).classList.remove('active');
+        }}
+        function closeModalOutside(event, modalId) {{
+            if (event.target.id === modalId) {{
+                closeModal(modalId);
+            }}
+        }}
+
         const tripPoints = {json.dumps(trip_map_points, ensure_ascii=False)};
         
         var tripMap = L.map('trip-map', {{ zoomControl: false }}).setView([35.3, 24.5], 9);
@@ -1428,6 +1584,6 @@ wycieczka_html = f"""<!DOCTYPE html>
 
 with open("wycieczka.html", "w", encoding="utf-8") as f:
     f.write(wycieczka_html)
-print(f"-> Zapisano wycieczka.html z tytułem w ramce pod zdjęciem.")
+print(f"-> Zapisano wycieczka.html z przyciskami i modalami checklist!")
 
 print("Gotowe!")
