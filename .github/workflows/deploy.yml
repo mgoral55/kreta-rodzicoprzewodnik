@@ -3,7 +3,8 @@ name: Buduj i Publikuj na Netlify
 on:
   push:
     paths:
-      - 'waypoints-v14.csv'
+      - 'miejsca.csv'
+      - 'karta_miejsca.csv'
       - 'generuj_strone.py'
       - 'zdjecia/**'
   workflow_dispatch:
